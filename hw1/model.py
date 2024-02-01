@@ -88,7 +88,7 @@ def create_tensor_dataset(raw_data: Dict[str, List[Union[int, str]]],
     # stack all features and labels into two single tensors and create a TensorDataset
     features_tensor = torch.stack(all_features)
     labels_tensor = torch.tensor(all_labels, dtype=torch.long)
-
+    
     return TensorDataset(features_tensor, labels_tensor)
 
 
@@ -130,7 +130,7 @@ def accuracy(logits: torch.FloatTensor, labels: torch.LongTensor) -> torch.Float
     assert logits.shape[0] == labels.shape[0]
     preds = torch.argmax(logits, dim=1)
     accuracy = (preds == labels).float()
-    
+
     return accuracy
 
 
