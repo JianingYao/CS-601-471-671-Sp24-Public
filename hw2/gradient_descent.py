@@ -52,24 +52,24 @@ def featurize(sentence: str, embeddings: gensim.models.keyedvectors.KeyedVectors
             vectors.append(embeddings[word])
         except KeyError:
             pass
-
-    # TODO (Copy from your HW1): complete the function to compute the average embedding of the sentence
-    # your return should be
-    # None - if the vector sequence is empty, i.e. the sentence is empty or None of the words in the sentence is in the embedding vocabulary
-    # A torch tensor of shape (embed_dim,) - the average word embedding of the sentence
-    # Hint: follow the hints in the pdf description
-    raise NotImplementedError
+    
+    if not vectors:
+        return None
+    
+    sentence_embedding = np.stack(vectors)
+    average_embedding = np.mean(sentence_embedding, axis=0)
+    
+    return torch.from_numpy(average_embedding)
 
 
 def create_tensor_dataset(raw_data: Dict[str, List[Union[int, str]]],
                           embeddings: gensim.models.keyedvectors.KeyedVectors) -> TensorDataset:
     all_features, all_labels = [], []
     for text, label in tqdm(zip(raw_data['text'], raw_data['label'])):
-
-        # TODO (Copy from your HW1): complete the for loop to featurize each sentence
-        # only add the feature and label to the list if the feature is not None
-        raise NotImplementedError
-        # your code ends here
+        feature = featurize(text, embeddings)
+        if feature is not None:
+            all_features.append(feature)
+            all_labels.append(label)
 
     # stack all features and labels into two single tensors and create a TensorDataset
     features_tensor = torch.stack(all_features)
@@ -88,17 +88,11 @@ class SentimentClassifier(nn.Module):
         self.embed_dim = embed_dim
         self.num_classes = num_classes
 
-        # TODO (Copy from your HW1): define the linear layer
-        # Hint: follow the hints in the pdf description
-        raise NotImplementedError
-        # your code ends here
+        self.linear = nn.Linear(self.embed_dim, self.num_classes)
+        self.loss = nn.CrossEntropyLoss(reduction='mean')
 
     def forward(self, inp):
-
-        # TODO (Copy from your HW1): complete the forward function
-        # Hint: follow the hints in the pdf description
-        raise NotImplementedError
-        # your code ends here
+        logits = self.linear(inp)
 
         return logits
 
@@ -108,7 +102,11 @@ class SentimentClassifier(nn.Module):
         # Hint: follow the hints in the pdf description
         # - logits is a tensor of shape (batch_size, num_classes)
         # - return a tensor of shape (batch_size, num_classes) with the softmax of the logits
-        raise NotImplementedError
+        c = torch.max(logits, dim=1, keepdim=True)[0]
+        exp = torch.exp(logits - c)
+        prob = exp / torch.sum(exp, dim=1, keepdim=True)
+
+        return prob
         # your code ends here
 
     # The function that perform backward pass
@@ -121,7 +119,13 @@ class SentimentClassifier(nn.Module):
         # - grads_weights: a tensor of shape (num_classes, embed_dim) that is the gradient of linear layer's weights
         # - grads_bias: a tensor of shape (num_classes,) that is the gradient of linear layer's bias
         # - loss: a scalar that is the cross entropy loss, averaged over the batch
-        raise NotImplementedError
+        one_hot = nn.functional.one_hot(labels, num_classes=self.num_classes)
+        probs = self.softmax(logits)
+        error = probs - one_hot
+
+        grads_weights = torch.matmul(error.T, inp) / bsz
+        grads_bias = torch.sum(error, dim=0) / bsz
+        loss = - torch.sum(one_hot * torch.log(probs + 1e-8)) / bsz # add epsilon to avoid undefined log
         # your code ends here
 
         return grads_weights, grads_bias, loss
@@ -151,11 +155,10 @@ def test_gradient_loss(model: SentimentClassifier):
 
 def accuracy(logits: torch.FloatTensor , labels: torch.LongTensor) -> torch.FloatTensor:
     assert logits.shape[0] == labels.shape[0]
-    # TODO (Copy from your HW1): complete the function to compute the accuracy
-    # Hint: follow the hints in the pdf description, the return should be a tensor of 0s and 1s with the same shape as labels
-    # labels is a tensor of shape (batch_size,)
-    # logits is a tensor of shape (batch_size, num_classes)
-    raise NotImplementedError
+    preds = torch.argmax(logits, dim=1)
+    accuracy = (preds == labels).float()
+
+    return accuracy
 
 
 def evaluate(model: SentimentClassifier, eval_dataloader: DataLoader) -> Tuple[float, float]:
@@ -202,7 +205,8 @@ def train(model: SentimentClassifier,
             # since we are doing gradient descent manually
             with torch.no_grad():
                 # TODO: complete the gradient descent update for the linear layer's weights and bias
-                raise NotImplementedError
+                model.linear.weight -= learning_rate * grads_weights
+                model.linear.bias -= learning_rate * grads_bias
                 # your code ends here
 
             # record the loss and accuracy
