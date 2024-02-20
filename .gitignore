@@ -1,0 +1,4 @@
+**/*.pth
+**/*.dat
+**/HW*-code.zip
+**/.DS_Store

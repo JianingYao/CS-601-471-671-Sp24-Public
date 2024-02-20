@@ -1,6 +1,7 @@
 from easydict import EasyDict
 from mlp_lm import run_mlp_lm, load_data_mlp_lm, sample_from_mlp_lm, visualize_epochs
 from tokenization import test_one_step_bpe, test_bpe, bpe_on_wikitext
+import os
 
 def single_run_mlp_lm(train_d, dev_d):
     train_config = EasyDict({
@@ -39,27 +40,29 @@ def sample_from_trained_mlp_lm(dev_d):
 
 
 if __name__ == '__main__':
+    os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = '1'
+
     # Test the one-step BPE algorithm
     # uncomment the following line to run
-    # test_one_step_bpe()
+    test_one_step_bpe()
 
     # Test the BPE algorithm
     # uncomment the following line to run
-    # test_bpe()
+    test_bpe()
 
     # Run BPE on the wikitext dataset
     # uncomment the following line to run
-    # bpe_on_wikitext()
+    bpe_on_wikitext()
 
     # load raw data for lm
     # uncomment the following line to run
-    # train_data, dev_data = load_data_mlp_lm()
+    train_data, dev_data = load_data_mlp_lm()
 
     # Run a single training run
     # uncomment the following line to run
-    # single_run_mlp_lm(train_data, dev_data)
+    single_run_mlp_lm(train_data, dev_data)
 
     # Sample from the pretrained model
     # uncomment the following line to run
-    # sample_from_trained_mlp_lm(dev_data)
+    sample_from_trained_mlp_lm(dev_data)
 
