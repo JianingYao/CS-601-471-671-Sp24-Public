@@ -80,7 +80,7 @@ class CausalSelfAttention(nn.Module):
         # (B, n_head, n_embd / n_head, T) -> (B, n_head, T, T)
         # calculate the scaled dot-product attention with causal mask, name the attention matrix as `att`
         # step 1: q @ k^T / sqrt(d_k), where d_k is the head hidden dimension (n_embd / n_head)
-        att = q @ k.transpose(-2, -1) / math.sqrt(self.n_embd / self.n_head)
+        att = q @ k.transpose(-2, -1) / math.sqrt(C // self.n_head)
 
         # step 2: apply the causal mask to the attention matrix
         # the masked out entries in att should have the value of float('-inf')
@@ -89,17 +89,17 @@ class CausalSelfAttention(nn.Module):
         # - don't forget to truncate the mask to the actual sequence length (T)
         # - to apply the mask, one possible way is the `torch.Tensor.masked_fill` method
         # - - for this, you can obtain the boolean mask by element-wise comparison of the causal mask with 0
-        att = torch.Tensor.masked_fill(att, self.causal_mask[:, :, :T, :T] == 0, float('-inf'))
+        att = att.masked_fill(self.causal_mask[:, :, :T, :T] == 0, float('-inf'))
 
         # step 3: apply the softmax function to the masked attention matrix
         # hint: you can use the `F.softmax` function
-        attn = F.softmax(att, dim=-1)
+        att = F.softmax(att, dim=-1)
 
         # step 4: apply the attention dropout (self.attn_dropout) to the attention matrix
-        attn = self.attn_dropout(attn)
+        att = self.attn_dropout(att)
 
         # step 5: multiply the attention matrix with value vectors
-        y = attn @ v  # (B, n_head, T, T) x (B, n_head, T, n_embd / n_head) -> (B, n_head, T, n_embd / n_head)
+        y = att @ v  # (B, n_head, T, T) x (B, n_head, T, n_embd / n_head) -> (B, n_head, T, n_embd / n_head)
 
         # your code ends here
 
